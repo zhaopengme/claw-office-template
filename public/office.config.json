@@ -1,0 +1,80 @@
+{
+  "office": {
+    "title": "My Pixel Office",
+    "background": "office_bg_small.webp",
+    "width": 1280,
+    "height": 720
+  },
+  "character": {
+    "name": "Star",
+    "defaultState": "idle"
+  },
+  "states": {
+    "idle": { "label": "休息中", "area": "breakroom" },
+    "working": { "label": "工作中", "area": "writing" },
+    "syncing": { "label": "午休中", "area": "breakroom" },
+    "error": { "label": "修 Bug", "area": "error" }
+  },
+  "furniture": {
+    "sofa": { "x": 798, "y": 272, "depth": 10 },
+    "sofaShadow": { "x": 798, "y": 272, "depth": 9 },
+    "desk": { "x": 218, "y": 417, "depth": 1001, "origin": { "x": 0.5, "y": 0.5 } },
+    "flower": { "x": 310, "y": 390, "depth": 1100, "scale": 0.8 },
+    "plants": [
+      { "x": 565, "y": 178, "depth": 5 },
+      { "x": 230, "y": 185, "depth": 5 },
+      { "x": 977, "y": 496, "depth": 5 }
+    ],
+    "poster": { "x": 252, "y": 66, "depth": 4 },
+    "cat": { "x": 94, "y": 557, "depth": 2000 },
+    "coffeeMachine": { "x": 659, "y": 397, "depth": 99 },
+    "coffeeMachineShadow": { "x": 659, "y": 397, "depth": 98 },
+    "serverroom": { "x": 1021, "y": 142, "depth": 2 },
+    "starWorking": { "x": 217, "y": 343, "depth": 900, "scale": 0.9 },
+    "errorBug": { "x": 1007, "y": 221, "depth": 50, "scale": 0.9, "pingPong": { "leftX": 1007, "rightX": 1111, "speed": 0.6 } },
+    "syncAnim": { "x": 1157, "y": 592, "depth": 40 }
+  },
+  "theme": {
+    "backgroundColor": "#1a1a2e",
+    "accentColor": "#ffd700",
+    "fontFamily": "ArkPixel"
+  },
+  "links": {
+    "twitter": "https://x.com/mobailabs"
+  },
+  "locales": {
+    "zh": {
+      "title": "我的像素办公室",
+      "loading": "加载像素资产中…",
+      "entering": "正在进入像素办公室…",
+      "states": {
+        "idle": "休息中",
+        "working": "工作中",
+        "syncing": "午休中",
+        "error": "修 Bug"
+      }
+    },
+    "en": {
+      "title": "My Pixel Office",
+      "loading": "Loading pixel assets…",
+      "entering": "Entering pixel office…",
+      "states": {
+        "idle": "Resting",
+        "working": "Working",
+        "syncing": "Napping",
+        "error": "Debugging"
+      }
+    },
+    "ja": {
+      "title": "ピクセルオフィス",
+      "loading": "ピクセルアセットを読み込み中…",
+      "entering": "ピクセルオフィスに入室中…",
+      "states": {
+        "idle": "休憩中",
+        "working": "作業中",
+        "syncing": "昼寝中",
+        "error": "デバッグ中"
+      }
+    }
+  }
+}
