@@ -13,6 +13,7 @@ export interface OfficeConfig {
   furniture: FurnitureConfig
   theme: ThemeConfig
   links?: {
+    github?: string
     twitter?: string
   }
   locales?: Record<string, LocaleStrings>

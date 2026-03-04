@@ -40,7 +40,8 @@
     "fontFamily": "ArkPixel"
   },
   "links": {
-    "twitter": "https://x.com/mobailabs"
+    "twitter": "https://x.com/mobailabs",
+    "github": "https://github.com/zhaopengme/claw-office-template"
   },
   "locales": {
     "zh": {

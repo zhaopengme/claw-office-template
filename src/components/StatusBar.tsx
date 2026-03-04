@@ -38,6 +38,16 @@ export function StatusBar({ config, currentState, locale, onStateChange, onLocal
         })}
       </div>
       <span className="status-bar-name">{config.character.name}</span>
+      {config.links?.github && (
+        <a
+          className="status-bar-link"
+          href={config.links.github}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
+      )}
       {config.links?.twitter && (
         <a
           className="status-bar-link"
