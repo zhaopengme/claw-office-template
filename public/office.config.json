@@ -1,6 +1,6 @@
 {
   "office": {
-    "title": "My Pixel Office",
+    "title": "Claw Office",
     "background": "office_bg_small.webp",
     "width": 1280,
     "height": 720
@@ -44,7 +44,7 @@
   },
   "locales": {
     "zh": {
-      "title": "我的像素办公室",
+      "title": "Claw 办公室",
       "loading": "加载像素资产中…",
       "entering": "正在进入像素办公室…",
       "states": {
@@ -55,7 +55,7 @@
       }
     },
     "en": {
-      "title": "My Pixel Office",
+      "title": "Claw Office",
       "loading": "Loading pixel assets…",
       "entering": "Entering pixel office…",
       "states": {
@@ -66,7 +66,7 @@
       }
     },
     "ja": {
-      "title": "ピクセルオフィス",
+      "title": "Claw オフィス",
       "loading": "ピクセルアセットを読み込み中…",
       "entering": "ピクセルオフィスに入室中…",
       "states": {
