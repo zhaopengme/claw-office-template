@@ -4,6 +4,10 @@
 
 A config-driven pixel art virtual office built with **Vite + React + TypeScript + Phaser 3**. Fork it, edit one JSON file, deploy to GitHub Pages.
 
+## Demo
+
+https://github.com/user-attachments/assets/34f90267-0d97-4435-a0a7-90c4170756b7
+
 ## Features
 
 - Pixel art office scene with animated furniture, characters, and effects

@@ -4,6 +4,10 @@
 
 基于 **Vite + React + TypeScript + Phaser 3** 的配置驱动像素风虚拟办公室。Fork 后只需编辑一个 JSON 文件，即可部署到 GitHub Pages。
 
+## 演示
+
+https://github.com/user-attachments/assets/34f90267-0d97-4435-a0a7-90c4170756b7
+
 ## 特性
 
 - 像素风办公室场景，包含动画家具、角色和特效

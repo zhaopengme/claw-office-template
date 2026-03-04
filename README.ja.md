@@ -4,6 +4,10 @@
 
 **Vite + React + TypeScript + Phaser 3** で構築された、設定駆動のピクセルアート仮想オフィス。フォークして JSON ファイルを1つ編集するだけで、GitHub Pages にデプロイできます。
 
+## デモ
+
+https://github.com/user-attachments/assets/34f90267-0d97-4435-a0a7-90c4170756b7
+
 ## 機能
 
 - アニメーション付きの家具、キャラクター、エフェクトを含むピクセルアートオフィスシーン
