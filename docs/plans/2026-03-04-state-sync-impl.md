@@ -8,6 +8,10 @@
 
 **Tech Stack:** Go (mobaiclaw backend), React 19 + TypeScript + Phaser (frontend)
 
+**Working Directories:**
+- Tasks 1-3 (backend): `/Users/zhaopeng/projects/github/mobaiclaw`
+- Tasks 4-7 (frontend): `/Users/zhaopeng/projects/github/Star-Office-UI/pixel-office-template/.worktrees/feature-chat`
+
 ---
 
 ### Task 1: Backend — emitState method on AgentLoop
@@ -59,13 +63,7 @@ git commit -m "feat(agent): add emitState method for WS state notifications"
 
 **Step 1: Emit `thinking` when message arrives**
 
-In `processMessage()`, after line 808 (logging block), before line 810 (system check):
-
-```go
-	al.emitState(agent.ID, "thinking", "")
-```
-
-Wait — agent is resolved at line 825. So emit after line 828 instead:
+In `processMessage()`, after agent is resolved (line 828), emit thinking state:
 
 ```go
 	agent, ok := al.registry.GetAgent(route.AgentID)
@@ -75,12 +73,14 @@ Wait — agent is resolved at line 825. So emit after line 828 instead:
 	al.emitState(agent.ID, "thinking", "")
 ```
 
-**Step 2: Emit `working` before LLM call**
+**Step 2: Emit `working` before LLM call (first attempt only)**
 
-In `llm_iteration.go`, before line 157 (`response, err = callLLM()`):
+In `llm_iteration.go`, before line 157 (`response, err = callLLM()`), inside the retry loop:
 
 ```go
-	al.emitState(agent.ID, "working", "calling LLM")
+	if retry == 0 {
+		al.emitState(agent.ID, "working", "calling LLM")
+	}
 ```
 
 **Step 3: Emit `working` before tool execution**
@@ -133,9 +133,31 @@ git commit -m "feat(agent): emit state events at key processing points"
 **Files:**
 - Modify: `pkg/wsgateway/server.go:44-65` (New function)
 
-**Step 1: Add state listener in New()**
+**Step 1: Filter `__state` and `ws` from existing broadcast listener**
 
-In `server.go`, inside the `if ol, ok := b.(outboundListenable); ok` block, after the existing broadcast listener (line 62):
+In `server.go`, modify the existing `wsgateway-broadcast` listener (line 56) to skip internal channels:
+
+```go
+		ol.AddOutboundListener("wsgateway-broadcast", func(msg bus.OutboundMessage) {
+			if msg.Channel == "__state" {
+				return // state events have their own listener
+			}
+			if msg.Channel == "ws" {
+				return // ws replies are delivered via waiter, no need to broadcast
+			}
+			s.broadcast(map[string]string{
+				"channel": msg.Channel,
+				"chat_id": msg.ChatID,
+				"content": msg.Content,
+			})
+		})
+```
+
+**Why filter `ws`?** When using `agent.wait`, the reply is delivered to the client via the handler's waiter mechanism. Without this filter, the broadcast listener would also send the same reply as a `message.outbound` notification, causing duplicate messages on the frontend.
+
+**Step 2: Add state listener in New()**
+
+In the same `if ol, ok` block, after the modified broadcast listener:
 
 ```go
 		ol.AddOutboundListener("wsgateway-state", func(msg bus.OutboundMessage) {
@@ -150,7 +172,7 @@ In `server.go`, inside the `if ol, ok := b.(outboundListenable); ok` block, afte
 		})
 ```
 
-**Step 2: Extract broadcastNotification from broadcast**
+**Step 3: Extract broadcastNotification from broadcast**
 
 Refactor the existing `broadcast` method into a more generic `broadcastNotification`:
 
@@ -177,20 +199,20 @@ func (s *Server) broadcast(params any) {
 }
 ```
 
-**Step 3: Add json import if not present**
+**Step 4: Add json import if not present**
 
 Check if `encoding/json` is already imported; add if missing.
 
-**Step 4: Verify it compiles**
+**Step 5: Verify it compiles**
 
 Run: `go build ./pkg/wsgateway/`
 Expected: no errors
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
 git add pkg/wsgateway/server.go
-git commit -m "feat(wsgateway): broadcast agent.state notifications to WS clients"
+git commit -m "feat(wsgateway): broadcast agent.state notifications, filter ws/state from chat broadcast"
 ```
 
 ---
@@ -726,19 +748,27 @@ export interface OfficeConfig {
 
 **Step 3: Pass wsUrl to useWebSocket**
 
-Update `useWebSocket` to accept a url parameter:
+Update `useWebSocket` to accept an optional url parameter with default fallback:
 
 ```typescript
-export function useWebSocket(wsUrl = 'ws://localhost:18791/ws') {
+const DEFAULT_WS_URL = 'ws://localhost:18791/ws'
+
+export function useWebSocket(wsUrl?: string) {
+  const dispatch = useAppDispatch()
+  const url = wsUrl || DEFAULT_WS_URL
+  // ... use `url` instead of `WS_URL` in connect()
 ```
 
-Replace `WS_URL` usage with `wsUrl` parameter.
+Add `url` to `connect`'s dependency array so reconnection happens if URL changes.
 
 **Step 4: Pass from App**
 
 ```typescript
 const { sendMessage } = useWebSocket(config?.ws?.url)
 ```
+
+> **Note:** On first render `config` is null, so `wsUrl` is undefined → uses default.
+> After config loads, URL won't change in practice (same value), so no unnecessary reconnect.
 
 **Step 5: Verify it compiles**
 
