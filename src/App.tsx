@@ -16,8 +16,8 @@ function AppInner() {
   const [locale, setLocale] = useState(DEFAULT_LOCALE)
   const [error, setError] = useState<string | null>(null)
   const gameRef = useRef<PhaserGameHandle>(null)
-  const { sendMessage } = useWebSocket(config?.ws?.url)
-  const { wsStatus, agentState, messages, sending } = useAppState()
+  const { sendMessage, selectSession } = useWebSocket(config?.ws?.url)
+  const { wsStatus, agentStates, messages, sending, sessions, currentSessionKey } = useAppState()
 
   useEffect(() => {
     fetch('./office.config.json')
@@ -40,10 +40,11 @@ function AppInner() {
   }, [config])
 
   useEffect(() => {
-    const mapped =
-      agentState.state === 'thinking' ? 'working' : agentState.state
+    const firstAgentId = Object.keys(agentStates)[0]
+    const agentState = firstAgentId ? agentStates[firstAgentId] : { state: 'idle' as const }
+    const mapped = agentState.state === 'thinking' ? 'working' : agentState.state
     setCurrentState(mapped)
-  }, [agentState])
+  }, [agentStates])
 
   useEffect(() => {
     gameRef.current?.changeState(currentState)
@@ -85,7 +86,10 @@ function AppInner() {
             status={wsStatus}
             messages={messages}
             sending={sending}
+            sessions={sessions}
+            currentSessionKey={currentSessionKey}
             onSend={sendMessage}
+            onSelectSession={selectSession}
           />
         </div>
       )}
