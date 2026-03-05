@@ -17,6 +17,10 @@ export interface OfficeConfig {
     twitter?: string
   }
   locales?: Record<string, LocaleStrings>
+  ws?: {
+    url: string
+    token?: string
+  }
 }
 
 export interface LocaleStrings {
