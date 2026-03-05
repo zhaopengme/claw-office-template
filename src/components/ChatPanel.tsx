@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ConnectionStatus, ChatMessage } from '../store'
+import type { ConnectionStatus, ChatMessage, SessionInfo } from '../store'
 
 interface Props {
   status: ConnectionStatus
   messages: ChatMessage[]
   sending: boolean
+  sessions: SessionInfo[]
+  currentSessionKey: string | null
   onSend: (content: string) => void
+  onSelectSession: (key: string) => void
 }
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -20,7 +23,7 @@ const STATUS_COLOR: Record<ConnectionStatus, string> = {
   disconnected: '#e94560',
 }
 
-export function ChatPanel({ status, messages, sending, onSend }: Props) {
+export function ChatPanel({ status, messages, sending, sessions, currentSessionKey, onSend, onSelectSession }: Props) {
   const [input, setInput] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +43,19 @@ export function ChatPanel({ status, messages, sending, onSend }: Props) {
   return (
     <div className="chat-panel">
       <div className="chat-header">
-        <span className="chat-title">Chat</span>
+        <select
+          className="chat-session-select"
+          value={currentSessionKey ?? ''}
+          onChange={(e) => e.target.value && onSelectSession(e.target.value)}
+          disabled={status !== 'connected'}
+        >
+          <option value="">选择对话...</option>
+          {sessions.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.agent_id} - {s.key.split(':').slice(2).join(':')} ({s.messages})
+            </option>
+          ))}
+        </select>
         <span className="chat-status" style={{ color: STATUS_COLOR[status] }}>
           {STATUS_LABEL[status]}
         </span>
@@ -48,7 +63,9 @@ export function ChatPanel({ status, messages, sending, onSend }: Props) {
 
       <div className="chat-messages" ref={listRef}>
         {messages.length === 0 && (
-          <div className="chat-empty">发送消息开始对话</div>
+          <div className="chat-empty">
+            {currentSessionKey ? '无消息' : '选择对话或直接发送消息'}
+          </div>
         )}
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-msg chat-msg-${msg.role}`}>
