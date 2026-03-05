@@ -14,24 +14,39 @@ export interface ChatMessage {
   content: string
 }
 
+export interface SessionInfo {
+  key: string
+  agent_id: string
+  messages: number
+  updated: number
+  created: number
+}
+
 export interface AppState {
   wsStatus: ConnectionStatus
-  agentState: AgentState
+  agentStates: Record<string, AgentState>
   messages: ChatMessage[]
   sending: boolean
+  currentSessionKey: string | null
+  sessions: SessionInfo[]
 }
 
 export type Action =
   | { type: 'ws/status'; status: ConnectionStatus }
-  | { type: 'agent/state'; state: AgentState }
+  | { type: 'agent/state'; agentId: string; state: AgentState }
   | { type: 'chat/addMessage'; message: ChatMessage }
+  | { type: 'chat/setMessages'; messages: ChatMessage[] }
   | { type: 'chat/sending'; sending: boolean }
+  | { type: 'session/list'; sessions: SessionInfo[] }
+  | { type: 'session/select'; key: string }
 
 const initialState: AppState = {
   wsStatus: 'disconnected',
-  agentState: { state: 'idle', detail: '' },
+  agentStates: {},
   messages: [],
   sending: false,
+  currentSessionKey: null,
+  sessions: [],
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -39,11 +54,23 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ws/status':
       return { ...state, wsStatus: action.status }
     case 'agent/state':
-      return { ...state, agentState: action.state }
+      return {
+        ...state,
+        agentStates: {
+          ...state.agentStates,
+          [action.agentId]: action.state,
+        },
+      }
     case 'chat/addMessage':
       return { ...state, messages: [...state.messages, action.message] }
+    case 'chat/setMessages':
+      return { ...state, messages: action.messages }
     case 'chat/sending':
       return { ...state, sending: action.sending }
+    case 'session/list':
+      return { ...state, sessions: action.sessions }
+    case 'session/select':
+      return { ...state, currentSessionKey: action.key, messages: [] }
     default:
       return state
   }
