@@ -3,3 +3,4 @@ dist/
 *.tsbuildinfo
 *.png
 !public/assets/*.png
+.worktrees/
