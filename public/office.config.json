@@ -77,5 +77,8 @@
         "error": "デバッグ中"
       }
     }
+  },
+  "ws": {
+    "url": "ws://localhost:18791/ws"
   }
 }
