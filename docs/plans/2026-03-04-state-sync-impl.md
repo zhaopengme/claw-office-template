@@ -18,10 +18,31 @@
 
 **Files:**
 - Modify: `pkg/agent/loop.go` (mobaiclaw repo)
+- Modify: `pkg/constants/channels.go`
 
-**Step 1: Add emitState method**
+**Step 1: Add `"__state"` to internalChannels**
 
-Add after line 44 (AgentLoop struct) or at the end of the file:
+In `pkg/constants/channels.go`, add `"__state"` to the `internalChannels` map:
+
+```go
+var internalChannels = map[string]struct{}{
+	"cli":      {},
+	"ws":       {},
+	"system":   {},
+	"subagent": {},
+	"__state":  {}, // state sync internal channel
+}
+```
+
+Without this, every `emitState` call would trigger a warn log in the channel dispatcher (`channels/manager.go`) when it fails to find a handler for the `"__state"` channel.
+
+**Step 2: Add `"encoding/json"` import to loop.go**
+
+`loop.go` does not currently import `"encoding/json"`. Add it to the import block since `emitState` uses `json.Marshal`.
+
+**Step 3: Add emitState method**
+
+Add at the end of `loop.go`:
 
 ```go
 // emitState publishes an agent state change notification via the bus.
@@ -41,16 +62,16 @@ func (al *AgentLoop) emitState(agentID, state, detail string) {
 }
 ```
 
-**Step 2: Verify it compiles**
+**Step 4: Verify it compiles**
 
 Run: `go build ./pkg/agent/`
 Expected: no errors
 
-**Step 3: Commit**
+**Step 5: Commit**
 
 ```bash
-git add pkg/agent/loop.go
-git commit -m "feat(agent): add emitState method for WS state notifications"
+git add pkg/agent/loop.go pkg/constants/channels.go
+git commit -m "feat(agent): add emitState method and __state internal channel"
 ```
 
 ---
@@ -58,12 +79,35 @@ git commit -m "feat(agent): add emitState method for WS state notifications"
 ### Task 2: Backend — Wire emitState into Agent Loop
 
 **Files:**
-- Modify: `pkg/agent/loop.go:794-924` (processMessage / runAgentLoop)
-- Modify: `pkg/agent/llm_iteration.go:155-160,288-301` (callLLM / tool execution)
+- Modify: `pkg/agent/loop.go` (processMessage / runAgentLoop / processOptions)
+- Modify: `pkg/agent/llm_iteration.go` (callLLM / tool execution)
 
-**Step 1: Emit `thinking` when message arrives**
+**Step 1: Add `SkipStateEmit` flag to processOptions**
 
-In `processMessage()`, after agent is resolved (line 828), emit thinking state:
+Find the `processOptions` struct in `loop.go` and add:
+
+```go
+	SkipStateEmit bool // suppress emitState for heartbeat scenarios
+```
+
+Then in `ProcessHeartbeat()`, set `SkipStateEmit: true` in its processOptions.
+
+**Step 2: Create conditional emit helper**
+
+To avoid repeating the skip check at every call site, add a wrapper in `loop.go`:
+
+```go
+func (al *AgentLoop) maybeEmitState(opts processOptions, agentID, state, detail string) {
+	if opts.SkipStateEmit {
+		return
+	}
+	al.emitState(agentID, state, detail)
+}
+```
+
+**Step 3: Emit `thinking` when message arrives**
+
+In `processMessage()`, after agent is resolved, emit thinking state:
 
 ```go
 	agent, ok := al.registry.GetAgent(route.AgentID)
@@ -73,53 +117,55 @@ In `processMessage()`, after agent is resolved (line 828), emit thinking state:
 	al.emitState(agent.ID, "thinking", "")
 ```
 
-**Step 2: Emit `working` before LLM call (first attempt only)**
+Note: `processMessage` is not called for heartbeats (they call `runAgentLoop` directly), so plain `emitState` is fine here.
 
-In `llm_iteration.go`, before line 157 (`response, err = callLLM()`), inside the retry loop:
+**Step 4: Emit `working` before LLM call (first attempt only)**
+
+In `llm_iteration.go`, `runLLMIteration` needs access to `opts`. It already receives `opts processOptions`. Before `callLLM()`, inside the retry loop:
 
 ```go
 	if retry == 0 {
-		al.emitState(agent.ID, "working", "calling LLM")
+		al.maybeEmitState(opts, agent.ID, "working", "calling LLM")
 	}
 ```
 
-**Step 3: Emit `working` before tool execution**
+**Step 5: Emit `working` before tool execution**
 
-In `llm_iteration.go`, before line 381 (tool execution), inside the tool loop (after line 308 logging):
-
-```go
-	al.emitState(agent.ID, "working", "calling tool: "+tc.Name)
-```
-
-**Step 4: Emit `idle` when processing completes**
-
-In `runAgentLoop()` in `loop.go`, after line 1087 (session save), before line 1090 (send response):
+In `llm_iteration.go`, inside the tool loop (after the tool call logging):
 
 ```go
-	al.emitState(agent.ID, "idle", "")
+	al.maybeEmitState(opts, agent.ID, "working", "calling tool: "+tc.Name)
 ```
 
-**Step 5: Emit `error` on failure**
+**Step 6: Emit `idle` when processing completes**
 
-In `runAgentLoop()`, at line 1069-1073 (error handling):
+In `runAgentLoop()`, after session save, before send response:
+
+```go
+	al.maybeEmitState(opts, agent.ID, "idle", "")
+```
+
+**Step 7: Emit `error` on failure**
+
+In `runAgentLoop()`, at the error handling block:
 
 ```go
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			al.emitState(agent.ID, "idle", "cancelled")
+			al.maybeEmitState(opts, agent.ID, "idle", "cancelled")
 			return "", nil
 		}
-		al.emitState(agent.ID, "error", err.Error())
+		al.maybeEmitState(opts, agent.ID, "error", err.Error())
 		return "", err
 	}
 ```
 
-**Step 6: Verify it compiles**
+**Step 8: Verify it compiles**
 
 Run: `go build ./pkg/agent/`
 Expected: no errors
 
-**Step 7: Commit**
+**Step 9: Commit**
 
 ```bash
 git add pkg/agent/loop.go pkg/agent/llm_iteration.go
@@ -133,17 +179,14 @@ git commit -m "feat(agent): emit state events at key processing points"
 **Files:**
 - Modify: `pkg/wsgateway/server.go:44-65` (New function)
 
-**Step 1: Filter `__state` and `ws` from existing broadcast listener**
+**Step 1: Filter internal channels from existing broadcast listener**
 
-In `server.go`, modify the existing `wsgateway-broadcast` listener (line 56) to skip internal channels:
+In `server.go`, modify the existing `wsgateway-broadcast` listener to skip all internal channels using the existing `constants.IsInternalChannel()` helper. This covers `__state`, `ws`, `system`, `subagent`, `cli` — and any future internal channels automatically.
 
 ```go
 		ol.AddOutboundListener("wsgateway-broadcast", func(msg bus.OutboundMessage) {
-			if msg.Channel == "__state" {
-				return // state events have their own listener
-			}
-			if msg.Channel == "ws" {
-				return // ws replies are delivered via waiter, no need to broadcast
+			if constants.IsInternalChannel(msg.Channel) {
+				return
 			}
 			s.broadcast(map[string]string{
 				"channel": msg.Channel,
@@ -153,7 +196,12 @@ In `server.go`, modify the existing `wsgateway-broadcast` listener (line 56) to 
 		})
 ```
 
-**Why filter `ws`?** When using `agent.wait`, the reply is delivered to the client via the handler's waiter mechanism. Without this filter, the broadcast listener would also send the same reply as a `message.outbound` notification, causing duplicate messages on the frontend.
+Add `"github.com/zhaopengme/mobaiclaw/pkg/constants"` to imports if not already present.
+
+**Why?** Internal channels have their own delivery mechanisms:
+- `__state`: dedicated `wsgateway-state` listener (Step 2)
+- `ws`: delivered via handler's waiter mechanism (agent.wait response)
+- `system`, `subagent`, `cli`: not relevant to WS clients
 
 **Step 2: Add state listener in New()**
 
@@ -360,6 +408,11 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       dispatch({ type: 'ws/status', status: 'disconnected' })
+      // Reject all pending requests to prevent Promise leaks
+      for (const [, pending] of pendingRef.current) {
+        pending.reject(new Error('Connection closed'))
+      }
+      pendingRef.current.clear()
       wsRef.current = null
       reconnectTimer.current = setTimeout(connect, 3000)
     }
